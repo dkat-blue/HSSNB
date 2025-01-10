@@ -86,7 +86,7 @@ def main():
     parser.add_argument('--gt_path', type=str, required=True, help='Path to ground truth .mat file')
     parser.add_argument('--n_components', type=int, default=30, help='Number of PCA components')
     parser.add_argument('--window_size', type=int, default=25, help='Spatial window size')
-    parser.add_argument('--remove_water_bands', type=bool, default=True, help='Remove water absorption bands')
+    parser.add_argument('--remove_water_bands', action='store_true', help='Remove water absorption bands')
     parser.add_argument('--train_size', type=float, default=0.3, help='Training data proportion')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     parser.add_argument('--num_epochs', type=int, default=100, help='Number of training epochs')

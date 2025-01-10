@@ -9,11 +9,15 @@ from typing import Tuple, List, Dict
 class HSIPreprocessor:
     """Preprocessor for Hyperspectral Image data"""
     
-    # Dictionary defining water absorption bands to remove for each dataset
+    # Updated dictionary for water absorption bands
+    # Now removing 24 total bands for IP (the paper's mention of 224 -> 200)
     WATER_ABSORPTION_BANDS = {
-        'IP': list(range(104,108)) + list(range(150,163)),  # Indian Pines
-        'PU': [],  # Pavia University - no removal needed
-        'SA': list(range(108,112)) + list(range(154,167))   # Salinas
+        'IP':  list(range(100,109)) + list(range(150,165)),  
+                #  (100..108) => 9 bands
+                # + (150..164) => 15 bands
+                # total = 24
+        'PU':  [],
+        'SA':  list(range(108,112)) + list(range(154,167))
     }
 
     def __init__(self, 
@@ -75,8 +79,8 @@ class HSIPreprocessor:
         mask[bands_to_remove] = False
         data_filtered = self.data[:, :, mask]
         
-        print(f"Removed {len(bands_to_remove)} water absorption bands")
-        print(f"New data shape: {data_filtered.shape}")
+        print(f"Removed {len(bands_to_remove)} water absorption bands.")
+        print(f"New data shape after band removal: {data_filtered.shape}")
         
         return data_filtered
     
@@ -97,8 +101,8 @@ class HSIPreprocessor:
         # Reshape back to 3D
         self.data_pca = data_pca.reshape(h, w, self.n_components)
         
-        print(f"Applied PCA: {c} bands → {self.n_components} components")
-        print(f"Explained variance ratio: {pca.explained_variance_ratio_.sum():.3f}")
+        print(f"Applied PCA: from {c} bands → {self.n_components} components.")
+        print(f"Explained variance ratio (sum): {pca.explained_variance_ratio_.sum():.3f}")
         
         return self.data_pca
     
@@ -119,7 +123,7 @@ class HSIPreprocessor:
         
         for i in range(h):
             for j in range(w):
-                if self.gt[i, j] != 0:  # Skip background
+                if self.gt[i, j] != 0:  # Skip background (label=0)
                     patch = padded_data[
                         i:i+self.window_size,
                         j:j+self.window_size,
@@ -135,14 +139,14 @@ class HSIPreprocessor:
         return patches, labels
     
     def create_train_test_split(self, 
-                              patches: np.ndarray, 
-                              labels: np.ndarray,
-                              train_size: float = 0.3,
-                              random_state: int = 42) -> Dict[str, np.ndarray]:
-        """Create stratified train/test split"""
+                                patches: np.ndarray, 
+                                labels: np.ndarray,
+                                train_size: float = 0.3,
+                                random_state: int = 42) -> Dict[str, np.ndarray]:
+        """Create stratified train/test split with a fixed random seed"""
+        # Use a fixed seed for reproducibility
         np.random.seed(random_state)
         
-        # Split indices by class
         classes = np.unique(labels)
         train_idx, test_idx = [], []
         
@@ -155,12 +159,11 @@ class HSIPreprocessor:
             train_idx.extend(idx[:n_train])
             test_idx.extend(idx[n_train:])
         
-        # Create final splits
         return {
             'X_train': patches[train_idx],
-            'X_test': patches[test_idx],
+            'X_test':  patches[test_idx],
             'y_train': labels[train_idx],
-            'y_test': labels[test_idx]
+            'y_test':  labels[test_idx]
         }
     
     def preprocess_pipeline(self, train_size: float = 0.3) -> Dict[str, np.ndarray]:
@@ -174,8 +177,8 @@ class HSIPreprocessor:
             k: torch.from_numpy(v).float() for k, v in split_data.items()
         }
         
-        # Rearrange dimensions to (batch, channel=1, spectral=30, height=25, width=25)
+        # Rearrange dimensions to (batch, channel=1, spectral=..., height, width)
         split_data['X_train'] = split_data['X_train'].permute(0, 3, 1, 2).unsqueeze(1)
-        split_data['X_test'] = split_data['X_test'].permute(0, 3, 1, 2).unsqueeze(1)
+        split_data['X_test']  = split_data['X_test'].permute(0, 3, 1, 2).unsqueeze(1)
         
         return split_data
